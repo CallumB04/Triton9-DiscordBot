@@ -51,6 +51,13 @@ async def team(ctx, choice="", teamname="", *, players=""):
             player = await bot.fetch_user(int(userid))
             teamplayers.append(player)
 
+    try:
+        player_ids = [player.id for player in teamplayers]
+        player_names = [player.name for player in teamplayers]
+
+    except:
+        pass
+
     if choice.upper() in ["CREATE", "DELETE", "VIEW", "ADD", "REMOVE"]:
         if choice.upper() == "CREATE":
             if teamname == "":
@@ -74,14 +81,11 @@ async def team(ctx, choice="", teamname="", *, players=""):
                     for current_player in teams[team]["players"]:
                         for player in teamplayers:
                             if current_player == player.id:
-                                await ctx.message.channel.send(f"<@{player.id}> is already in the team: '{team}'. Use '!player leave' if you wish to leave it! <@{ctx.message.author.id}>")
+                                await ctx.message.channel.send(f"<@{player.id}> is already in the team: '{team}'. They can use '!player leave' if they wish to leave it! <@{ctx.message.author.id}>")
                                 return
 
             with open("./data/teams.json", "r") as f:
                 teams = json.load(f)
-
-                player_ids = [player.id for player in teamplayers]
-                player_names = [player.name for player in teamplayers]
 
                 teams[teamname] = {}
                 teams[teamname]["players"] = player_ids
@@ -89,11 +93,29 @@ async def team(ctx, choice="", teamname="", *, players=""):
                 teams[teamname]["games"] = 0
                 teams[teamname]["wins"] = 0
                 teams[teamname]["losses"] = 0
+                teams[teamname]["points"] = 0
                 teams[teamname]["money_earned"] = 0
 
             with open("./data/teams.json", "w") as f:
                 json.dump(teams, f)
-                await ctx.message.channel.send(f"Team '{teamname}' created! Players: {player_names}")
+                await ctx.message.channel.send(f"Team '{teamname}' created! Players: {player_names} <@{ctx.message.author.id}>")
+
+            with open("./data/players.json", "r") as f:
+                players = json.load(f)
+
+                for p_id in player_ids:
+                    id_str = str(p_id)
+                    if id_str in players:
+                        players[id_str]["team"] = teamname
+                    else:
+                        players[id_str] = {}
+                        players[id_str]["team"] = teamname
+                        players[id_str]["games"] = 0
+                        players[id_str]["wins"] = 0
+                        players[id_str]["losses"] = 0
+
+            with open("./data/players.json", "w") as f:
+                json.dump(players, f)
 
         elif choice.upper() == "DELETE":
             if teamname == "":
@@ -109,12 +131,24 @@ async def team(ctx, choice="", teamname="", *, players=""):
                         await ctx.message.channel.send(f"Team: '{teamname}' deleted! <@{ctx.message.author.id}>")
                     else:
                         await ctx.message.channel.send(f"Team: '{teamname}' does not exist! <@{ctx.message.author.id}>")
+                        return
                 else:
                     await ctx.message.channel.send(f"You are not the owner of team '{teamname}'! <@{ctx.message.author.id}>")
                     return
 
             with open("./data/teams.json", "w") as f:
                 json.dump(teams, f)
+                await ctx.message.channel.send(f"Team '{teamname}' deleted! Players without team: {player_names} <@{ctx.message.author.id}>")
+
+            with open("./data/players.json", "r") as f:
+                players = json.load(f)
+
+                for p_id in player_ids:
+                    id_str = str(p_id)
+                    players[id_str]["team"] = "N/A"
+
+            with open("./data/players.json", "w") as f:
+                json.dump(players, f)
 
         elif choice.upper() == "VIEW":
             if teamname == "":
@@ -129,10 +163,12 @@ async def team(ctx, choice="", teamname="", *, players=""):
                     players_obj = [await bot.fetch_user(playerid) for playerid in players_id]
                     players = [p.name for p in players_obj]
                     team_as_str = ", ".join(players)
+                    owner_id = teams[teamname]["owner"]
+                    owner_user = await bot.fetch_user(owner_id)
 
                     embed = discord.Embed(title = teamname.capitalize(), color = discord.Colour.red())
-                    embed.add_field(name = "Owner", value = teams[teamname]["owner"], inline = False)
-                    embed.add_field(name = "Players", value = team_as_str)
+                    embed.add_field(name = "Owner", value = owner_user.name, inline = False)
+                    embed.add_field(name = "Players", value = team_as_str, inline = False)
                     embed.add_field(name = "Games Played", value = teams[teamname]["games"], inline = False)
                     embed.add_field(name = "Wins", value = teams[teamname]["wins"], inline = False)
                     embed.add_field(name = "Losses", value = teams[teamname]["losses"], inline = False)
@@ -171,9 +207,26 @@ async def team(ctx, choice="", teamname="", *, players=""):
                     for plr in teamplayers:
                         teams[teamname]["players"].append(plr.id)
 
+
                 else:
                     await ctx.message.channel.send(f"You are not the owner of team '{teamname}'! <@{ctx.message.author.id}>")
                     return
+
+            with open("./data/teams.json", "w") as f:
+                json.dump(teams, f)
+                player_names = [player.name for player in teamplayers]
+                await ctx.message.channel.send(f"Player[s] {player_names} added to {teamname}!")
+
+            with open("./data/players.json", "r") as f:
+                players = json.load(f)
+
+                for plr_id in player_ids:
+                    id_str = str(plr_id)
+
+                    players[id_str]["team"] = teamname
+
+            with open("./data/players.json", "w") as f:
+                json.dump(players, f)
         
         elif choice.upper() == "REMOVE":
             if teamname == "":
@@ -199,13 +252,23 @@ async def team(ctx, choice="", teamname="", *, players=""):
                         return
                 else:
                     await ctx.message.channel.send(f"You are not the owner of team '{teamname}'! <@{ctx.message.author.id}>")
-                    return
-                    
+                    return   
 
             with open("./data/teams.json", "w") as f:
                 json.dump(teams, f)
                 player_names = [player.name for player in teamplayers]
-                await ctx.message.channel.send(f"Player[s] {player_names} removed from {teamname}!")
+                await ctx.message.channel.send(f"Player[s] {player_names} removed from {teamname}! <@{ctx.message.author.id}>")
+
+            with open("./data/players.json", "r") as f:
+                players = json.load(f)
+
+                for plr_id in player_ids:
+                    id_str = str(plr_id)
+
+                    players[id_str]["team"] = "N/A"
+
+            with open("./data/players.json", "w") as f:
+                json.dump(players, f)
 
     else:
         await ctx.message.channel.send(f"Not a viable command. Use '!help' commands if you need! <@{ctx.message.author.id}>")
@@ -225,9 +288,10 @@ async def player(ctx, choice="", playername=""):
         await ctx.message.channel.send(f"Please mention a valid user. Use '!help' commands if you need! <@{ctx.message.author.id}>")
         return
 
-    playerid_0 = playername.split("!")[1]
-    playerid = playerid_0.split(">")[0]
-    player = await bot.fetch_user(int(playerid))
+    if playername != "":
+        playerid_0 = playername.split("!")[1]
+        playerid = playerid_0.split(">")[0]
+        player = await bot.fetch_user(int(playerid))
     
     if choice.upper() in ["VIEW", "LEAVE"]:
         if choice.upper() == "VIEW":
@@ -246,6 +310,7 @@ async def player(ctx, choice="", playername=""):
                 else:
                     await ctx.message.channel.send(f"User <@{player.id}> does not have a profile. They need to be in a team! <@{ctx.message.author.id}>")
                     return
+
         elif choice.upper() == "LEAVE":
             with open("./data/players.json", "r") as f:
                 players = json.load(f)
@@ -256,10 +321,21 @@ async def player(ctx, choice="", playername=""):
                     current_team = players[plr_id_str]["team"]
                     await ctx.message.channel.send(f"You have left the team '{current_team}'! <@{ctx.message.author.id}>")
                     players[plr_id_str]["team"] = "N/A"
-                    return
                 else:
                     await ctx.message.channel.send(f"You do not currently have a profile. Join a team to get one! <@{ctx.message.author.id}>")
                     return
+
+            with open("./data/players.json", "w") as f:
+                json.dump(players, f)
+
+            with open("./data/teams.json", "r") as f:
+                teams = json.load(f)
+
+                teams[current_team]["players"].remove(ctx.message.author.id)
+
+            with open("./data/teams.json", "w") as f:
+                json.dump(teams, f)
+
     else:
         await ctx.message.channel.send(f"That command doesnt exist. Use '!help' commands if you need! <@{ctx.message.author.id}>")
         return
