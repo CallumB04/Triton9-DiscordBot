@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
 import asyncio
-import json, os
+import json, os, random
 
 os.chdir("C:\\Users\\toure\\Coding\\Python\\Triton9-DiscordBot")
 
@@ -345,9 +345,9 @@ async def player(ctx, choice="", playername=""):
         return
 
 @bot.command()
-async def gb(ctx, choice="", teamname="", enemyteam=""):
+async def tb(ctx, choice="", teamname="", enemyteam=""):
 
-    ## -- !gb <choice> --
+    ## -- !tb <choice> --
     ## view -> allows user to view players stats and infomation
     ## leave -> allows player to leave a team if they are in one
 
@@ -369,13 +369,13 @@ async def gb(ctx, choice="", teamname="", enemyteam=""):
 
                 if teamname in teams:
                     if enemyteam in teams:
-                        if len(teams[teamname]["players"] == 4 and len(teams[enemyteam]["players"] == 4)):
+                        if len(teams[teamname]["players"]) == 4 and len(teams[enemyteam]["players"]) == 4:
                             if teams[teamname]["owner"] == ctx.message.author.id:
                                 enemy_owner = teams[enemyteam]["owner"]
-                                await ctx.message.channel.send(f"<@{enemy_owner}>, your team '{enemyteam}' has been challenged. You have 60 seconds to accept, do you? [yes/no]")
+                                await ctx.message.channel.send(f"<@{enemy_owner}>, your team '{enemyteam}' has been challenged. You have 60 seconds to accept? `!accept or !decline`")
 
                                 def check(m):
-                                    return m.content.upper() in ["YES", "NO"] and m.author.id == enemy_owner
+                                    return m.content.upper() in ["!ACCEPT", "!DECLINE"] and m.author.id == enemy_owner
 
                                 try:
                                     msg = await bot.wait_for("message", timeout=60.0, check=check)
@@ -383,7 +383,7 @@ async def gb(ctx, choice="", teamname="", enemyteam=""):
                                     await ctx.message.channel.send(f"The game was not accepted in time. Challenge them again or try another team! [<@{ctx.message.author.id}>]")
                                     return
                                 else:
-                                    if msg.content.upper() == "YES":
+                                    if msg.content.upper() == "!ACCEPT":
                                         embed = discord.Embed(title = "Challenge accepted, please report back in the next 60 minutes with scores. Use !help if you need assistance!", color = discord.Colour.blurple())
                                         
                                         ## Team 1
@@ -410,13 +410,17 @@ async def gb(ctx, choice="", teamname="", enemyteam=""):
 
                                         embed.add_field(name = f"Team 2: {enemyteam.capitalize()}", value = team2_text, inline=False)
 
+                                        ## coin flip to show first host
+                                        firsthost = random.choice([teamname, enemyteam])
+                                        embed.add_field(name = "Hosting first", value = firsthost.capitalize(), inline=False)
 
-                                        embed.set_footer(text = f"The owner of '{teamname}': '{ctx.message.author.name}', needs to input outcome. 'Game win' or 'Game loss' in this current channel.")
+
+                                        embed.set_footer(text = f"The owner of '{teamname}': '{ctx.message.author.name}', needs to input outcome. '!game win' or '!game loss' in this current channel.")
                                         await ctx.message.channel.send(embed=embed)
 
 
                                         def win_check(m):
-                                            return m.content.upper() in ["GAME WIN", "GAME LOSS"] and m.author.id == ctx.message.author.id
+                                            return m.content.upper() in ["!GAME WIN", "!GAME LOSS"] and m.author.id == ctx.message.author.id
 
                                         try:
                                             result = await bot.wait_for("message", timeout=3600.0, check=win_check)
@@ -443,7 +447,7 @@ async def gb(ctx, choice="", teamname="", enemyteam=""):
                                             
 
 
-                                            if result.content.upper() == "GAME WIN":
+                                            if result.content.upper() == "!GAME WIN":
                                                 teams[teamname]["games"] += 1
                                                 teams[teamname]["wins"] += 1
                                                 teams[teamname]["points"] += 100
@@ -479,7 +483,7 @@ async def gb(ctx, choice="", teamname="", enemyteam=""):
                                                 embed.add_field(name = f"WINNERS: {teamname.capitalize()}", value = team1_text, inline=False)
                                                 embed.add_field(name = f"LOSERS: {enemyteam.capitalize()}", value = team2_text, inline=False)
 
-                                            elif result.content.upper() == "GAME LOSS":
+                                            elif result.content.upper() == "!GAME LOSS":
                                                 teams[enemyteam]["games"] += 1
                                                 teams[enemyteam]["wins"] += 1
                                                 teams[enemyteam]["points"] += 100
@@ -518,18 +522,19 @@ async def gb(ctx, choice="", teamname="", enemyteam=""):
                                             embed.set_footer(text = "Good luck in future games!")
                                             await ctx.message.channel.send(embed=embed)
 
-                                    elif msg.content.upper() == "NO":
+                                    elif msg.content.upper() == "!DECLINE":
                                         await ctx.message.channel.send(f"Challenge declined! [<@{enemy_owner}>]")
+                                        return
 
                             else:
                                 await ctx.message.channel.send(f"You are not the owner of team '{teamname}'! [<@{ctx.message.author.id}>]")
                                 return
                         else:
-                            if len(teams[teamname]["players"] < 4):
-                                await ctx.message.channel.send(f"Team {teamname.capitalize()} does not have enough players! [<@{ctx.message.author.id}>]")
+                            if len(teams[teamname]["players"]) < 4:
+                                await ctx.message.channel.send(f"Team {teamname.capitalize()} does not have enough players to compete! [<@{ctx.message.author.id}>]")
                                 return
-                            elif len(teams[enemyteam]["players"] < 4):
-                                await ctx.message.channel.send(f"Team {enemyteam.capitalize()} does not have enough players! [<@{ctx.message.author.id}>]")
+                            elif len(teams[enemyteam]["players"]) < 4:
+                                await ctx.message.channel.send(f"Team {enemyteam.capitalize()} does not have enough players to compete! [<@{ctx.message.author.id}>]")
                                 return
                     else:
                         await ctx.message.channel.send(f"Team '{enemyteam}' doesnt exist. You cant challenge this team! [<@{ctx.message.author.id}>]")
