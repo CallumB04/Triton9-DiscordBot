@@ -394,7 +394,7 @@ async def tb(ctx, choice="", teamname="", enemyteam=""):
                                         team1_wins = teams[teamname]["wins"]
                                         team1_losses = teams[teamname]["losses"]
                                         team1_ratio = f"{team1_wins} - {team1_losses}"
-                                        team1_text = str(team1_players_str + "; " + team1_ratio)
+                                        team1_text = str(team1_players_str + "; `" + team1_ratio + "`")
 
                                         embed.add_field(name = f"Team 1: {teamname.capitalize()}", value = team1_text, inline=False)
 
@@ -406,16 +406,17 @@ async def tb(ctx, choice="", teamname="", enemyteam=""):
                                         team2_wins = teams[enemyteam]["wins"]
                                         team2_losses = teams[enemyteam]["losses"]
                                         team2_ratio = f"{team2_wins} - {team2_losses}"
-                                        team2_text = str(team2_players_str + "; " + team2_ratio)
+                                        team2_text = str(team2_players_str + "; `" + team2_ratio + "`")
 
                                         embed.add_field(name = f"Team 2: {enemyteam.capitalize()}", value = team2_text, inline=False)
 
-                                        ## coin flip to show first host
-                                        firsthost = random.choice([teamname, enemyteam])
-                                        embed.add_field(name = "Hosting first", value = firsthost.capitalize(), inline=False)
+                                        
+                                        firsthost = random.choice([teamname, enemyteam]) ## coin flip to show first host
+                                        random_gm = random.choice(["Hardpoint", "Search and Destroy"]) ## randomising gamemode
 
+                                        embed.add_field(name = "Game rules", value = f"`First host - {firsthost.capitalize()}`\n`Gamemode - {random_gm}`", inline=False)
 
-                                        embed.set_footer(text = f"The owner of '{teamname}': '{ctx.message.author.name}', needs to input outcome. '!game win' or '!game loss' in this current channel.")
+                                        embed.set_footer(text = f"The owner of {teamname}: {ctx.message.author.name}, needs to input outcome. '!game win' or '!game loss' in this current channel.")
                                         await ctx.message.channel.send(embed=embed)
 
 
@@ -455,6 +456,7 @@ async def tb(ctx, choice="", teamname="", enemyteam=""):
                                                 teams[enemyteam]["games"] += 1
                                                 teams[enemyteam]["losses"] += 1
                                                 teams[enemyteam]["points"] -= 45
+                                                if teams[enemyteam]["points"] < 0: teams[enemyteam]["points"] = 0
 
                                                 with open("./data/players.json", "r") as f2:
                                                     players = json.load(f2)
@@ -491,6 +493,8 @@ async def tb(ctx, choice="", teamname="", enemyteam=""):
                                                 teams[teamname]["games"] += 1
                                                 teams[teamname]["losses"] += 1
                                                 teams[teamname]["points"] -= 45
+
+                                                if teams[teamname]["points"] < 0: teams[teamname]["points"] = 0
 
                                                 with open("./data/players.json", "r") as f2:
                                                     players = json.load(f2)
@@ -546,7 +550,6 @@ async def tb(ctx, choice="", teamname="", enemyteam=""):
             with open("./data/teams.json", "w") as f:
                 json.dump(teams, f)
 
-
         elif choice.upper() == "WAGER":
             return
     
@@ -554,6 +557,32 @@ async def tb(ctx, choice="", teamname="", enemyteam=""):
         await ctx.message.channel.send(f"That command doesnt exist. Use '!help' commands if you need! [<@{ctx.message.author.id}>]")
         return
 
+@bot.command()
+async def leaderboard(ctx):
+    with open("./data/teams.json") as f:
+        teams = json.load(f)
+
+        team_points = {}
+
+        ## team stored as array [points, wins, losses] ------ team_points[team][0] = points of team
+        for index, team in enumerate(teams):
+            if index < 10:
+                team_points[team] = []
+                team_points[team].append(teams[team]["points"])
+                team_points[team].append(teams[team]["wins"])
+                team_points[team].append(teams[team]["losses"])
+            else: break
+
+        sorted_teams = dict(sorted(team_points.items(), key=lambda item: item[1][0], reverse=True))
+
+        leaderboard_text_arr = [f"`{index+1})` {team.capitalize()} -> {sorted_teams[team][0]} Points  ( Wins: {sorted_teams[team][1]} - Losses: {sorted_teams[team][2]} )" for index, team in enumerate(sorted_teams)]
+        leaderboard_text = "\n".join(leaderboard_text_arr)
+
+        embed = discord.Embed(title = "Leaderboards", color = discord.Colour.purple())
+        embed.add_field(name = "Top 10 Teams ", value = leaderboard_text, inline=False)
+
+        await ctx.message.channel.send(embed=embed)
     
+        
 
 bot.run(TOKEN)
