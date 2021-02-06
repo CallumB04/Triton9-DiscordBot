@@ -21,41 +21,52 @@ async def on_message(message):
     if not message.author.bot:
 
         words = message.content.split(" ")
+        try: help_type = words[1]
+        except: help_type = ""
         if words[0].upper() == "!HELP":
 
             embed = discord.Embed(title = "Triton bot Help!", color = discord.Colour.red())
 
-            team_commands = []
-            team_commands.append("!team create <teamname> <@members> - Create a team with up to 4 members.")
-            team_commands.append("!team delete <teamname> - Delete a team that you own.")
-            team_commands.append("!team view <teamname> - View statistics of a team.")
-            team_commands.append("!team add <teamname> <@members> - Add members to a team you own.")
-            team_commands.append("!team remove <teamname> <@members> - Remove members from a team you own.")
-            team_commands_text = "\n".join(team_commands)
-            embed.add_field(name = "Team Commands", value = team_commands_text, inline = False)
+            if help_type.upper() in ["TEAM", "PLAYER", "TB", "LEADERBOARD", ""]:
+                if help_type.upper() in ["TEAM", ""]:
+                    team_commands = []
+                    team_commands.append("!team create <teamname> <@members> - Create a team with up to 4 members.")
+                    team_commands.append("!team delete <teamname> - Delete a team that you own.")
+                    team_commands.append("!team view <teamname> - View statistics of a team.")
+                    team_commands.append("!team add <teamname> <@members> - Add members to a team you own.")
+                    team_commands.append("!team remove <teamname> <@members> - Remove members from a team you own.")
+                    team_commands_text = "\n".join(team_commands)
+                    embed.add_field(name = "Team Commands", value = team_commands_text, inline = False)
 
-            player_commands = []
-            player_commands.append("!player leave - leave your current team.")
-            player_commands.append("!player view <@member> - view a players statistics.")
-            player_commands_text = "\n".join(player_commands)
-            embed.add_field(name = "Player Commands", value = player_commands_text, inline = False)
-            
-            tb_commands = []
-            tb_commands.append("!tb4 challenge <teamname> <enemyteam> - Challenge a team to a 4v4 triton battle.")
-            tb_commands.append("!tb4 wager <teamname> <enemyteam> <amount> - Challenge a team to a 4v4 wager.")
-            tb_commands.append("!tb2 challenge <teamname> <enemyteam> - Challenge a team to a 2v2 triton battle.")
-            tb_commands.append("!tb2 wager <teamname> <enemyteam> <amount> - Challenge a team to a 2v2 wager.")
-            tb_commands.append("!tb1 challenge <teamname> <enemyteam> - Challenge a team to a 1v1 triton battle.")
-            tb_commands.append("!tb1 wager <teamname> <enemyteam> <amount> - Challenge a team to a 1v1 wager.")
-            tb_commands_text = "\n".join(tb_commands)
-            embed.add_field(name = "TB Commands", value = tb_commands_text, inline = False)
+                if help_type.upper() in ["PLAYER", ""]:
+                    player_commands = []
+                    player_commands.append("!player leave - leave your current team.")
+                    player_commands.append("!player view <@member> - view a players statistics.")
+                    player_commands_text = "\n".join(player_commands)
+                    embed.add_field(name = "Player Commands", value = player_commands_text, inline = False)
+                
+                if help_type.upper() in ["TB", ""]:
+                    tb_commands = []
+                    tb_commands.append("!tb4 challenge <teamname> <enemyteam> - Challenge a team to a 4v4 triton battle.")
+                    tb_commands.append("!tb4 wager <teamname> <enemyteam> <amount> - Challenge a team to a 4v4 wager.")
+                    tb_commands.append("!tb2 challenge <teamname> <enemyteam> - Challenge a team to a 2v2 triton battle.")
+                    tb_commands.append("!tb2 wager <teamname> <enemyteam> <amount> - Challenge a team to a 2v2 wager.")
+                    tb_commands.append("!tb1 challenge <teamname> <enemyteam> - Challenge a team to a 1v1 triton battle.")
+                    tb_commands.append("!tb1 wager <teamname> <enemyteam> <amount> - Challenge a team to a 1v1 wager.")
+                    tb_commands_text = "\n".join(tb_commands)
+                    embed.add_field(name = "TB Commands", value = tb_commands_text, inline = False)
 
-            leaderboard_commands = []
-            leaderboard_commands.append("!leaderboard - shows all leaderboards.")
-            leaderboard_commands.append("!leaderboard points - shows points leaderboards.")
-            leaderboard_commands.append("!leaderboard money - shows money earned leaderboards.")
-            leaderboard_commands_text = "\n".join(leaderboard_commands)
-            embed.add_field(name = "Leaderboard Commands", value = leaderboard_commands_text, inline = False)
+                if help_type.upper() in ["LEADERBOARD", ""]:
+                    leaderboard_commands = []
+                    leaderboard_commands.append("!leaderboard - shows all leaderboards.")
+                    leaderboard_commands.append("!leaderboard points - shows points leaderboards.")
+                    leaderboard_commands.append("!leaderboard money - shows money earned leaderboards.")
+                    leaderboard_commands_text = "\n".join(leaderboard_commands)
+                    embed.add_field(name = "Leaderboard Commands", value = leaderboard_commands_text, inline = False)
+
+            else:
+                await message.channel.send(f"Help type '{help_type.lower().capitalize()}'' does not exist! [<@{ctx.message.author.id}>]")
+                return
 
             await message.channel.send(embed=embed)
 
@@ -1629,7 +1640,7 @@ async def leaderboard(ctx, leaderboard_type=""):
 
             embed.add_field(name = "Top 10 Teams (Points) ", value = leaderboard_text_points, inline=False)
 
-        elif leaderboard_type.upper() in ["MONEY", ""]:
+        if leaderboard_type.upper() in ["MONEY", ""]:
             team_money = {}
 
             for team in teams:
