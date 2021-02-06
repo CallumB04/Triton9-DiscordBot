@@ -19,7 +19,42 @@ async def on_ready():
 @bot.event
 async def on_message(message):
     if not message.author.bot:
-    
+
+        words = message.content.split(" ")
+        if words[0].upper() == "!HELP":
+
+            embed = discord.Embed(title = "Triton bot Help!", color = discord.Colour.red())
+
+            team_commands = []
+            team_commands.append("!team create <teamname> <@members> - Create a team with up to 4 members.")
+            team_commands.append("!team delete <teamname> - Delete a team that you own.")
+            team_commands.append("!team view <teamname> - View statistics of a team.")
+            team_commands.append("!team add <teamname> <@members> - Add members to a team you own.")
+            team_commands.append("!team remove <teamname> <@members> - Remove members from a team you own.")
+            team_commands_text = "\n".join(team_commands)
+            embed.add_field(name = "Team Commands", value = team_commands_text, inline = False)
+
+            player_commands = []
+            player_commands.append("!player leave - leave your current team.")
+            player_commands.append("!player view <@member> - view a players statistics.")
+            player_commands_text = "\n".join(player_commands)
+            embed.add_field(name = "Player Commands", value = player_commands_text, inline = False)
+            
+            tb_commands = []
+            tb_commands.append("!tb challenge <teamname> <enemyteam> - Challenge a team to a triton battle.")
+            tb_commands.append("!tb wager <teamname> <enemyteam> <amount> - Challenge a team to a wager.")
+            tb_commands_text = "\n".join(tb_commands)
+            embed.add_field(name = "TB Commands", value = tb_commands_text, inline = False)
+
+            leaderboard_commands = []
+            leaderboard_commands.append("!leaderboard - shows all leaderboards.")
+            leaderboard_commands.append("!leaderboard points - shows points leaderboards.")
+            leaderboard_commands.append("!leaderboard money - shows money earned leaderboards.")
+            leaderboard_commands_text = "\n".join(leaderboard_commands)
+            embed.add_field(name = "Leaderboard Commands", value = leaderboard_commands_text, inline = False)
+
+            await message.channel.send(embed=embed)
+
         bot.remove_command("help")
         await bot.process_commands(message)
 
@@ -346,10 +381,6 @@ async def player(ctx, choice="", playername=""):
 
 @bot.command()
 async def tb(ctx, choice="", teamname="", enemyteam="", wagered=0):
-
-    ## -- !tb <choice> --
-    ## view -> allows user to view players stats and infomation
-    ## leave -> allows player to leave a team if they are in one
 
     if choice == "":
         await ctx.message.channel.send(f"Please enter a valid command. Use '!help' commands if you need! [<@{ctx.message.author.id}>]")
@@ -751,53 +782,58 @@ async def tb(ctx, choice="", teamname="", enemyteam="", wagered=0):
         return
 
 @bot.command()
-async def leaderboard(ctx):
+async def leaderboard(ctx, _type=""):
     with open("./data/teams.json") as f:
         teams = json.load(f)
 
-        team_points = {}
-
-        ## team stored as array [points, wins, losses] ------ team_points[team][0] = points of team
-        for team in teams:
-            team_points[team] = []
-            team_points[team].append(teams[team]["points"])
-            team_points[team].append(teams[team]["wins"])
-            team_points[team].append(teams[team]["losses"])
-            
-
-        sorted_teams_points = dict(sorted(team_points.items(), key=lambda item: item[1][0], reverse=True))
-
-        leaderboard_text_points_arr = []
-
-        for index,team in enumerate(sorted_teams_points):
-            if index < 10:
-                leaderboard_text_points_arr.append(f"`{index+1})` {team.capitalize()} -> {sorted_teams_points[team][0]} Points  ( Wins: {sorted_teams_points[team][1]} - Losses: {sorted_teams_points[team][2]} )")
-            else: break
-            
-        leaderboard_text_points = "\n".join(leaderboard_text_points_arr)
-
         embed = discord.Embed(title = "Leaderboards", color = discord.Colour.purple())
-        embed.add_field(name = "Top 10 Teams (Points) ", value = leaderboard_text_points, inline=False)
 
+        if _type.upper() in ["POINTS", ""]:
+            team_points = {}
 
-        team_money = {}
+            ## team stored as array [points, wins, losses] ------ team_points[team][0] = points of team
+            for team in teams:
+                team_points[team] = []
+                team_points[team].append(teams[team]["points"])
+                team_points[team].append(teams[team]["wins"])
+                team_points[team].append(teams[team]["losses"])
+                
 
-        for team in teams:
-            team_money[team] = teams[team]["money_earned"]
+            sorted_teams_points = dict(sorted(team_points.items(), key=lambda item: item[1][0], reverse=True))
 
-        sorted_teams_money = dict(sorted(team_money.items(), key=lambda item: item[1], reverse=True))
+            leaderboard_text_points_arr = []
 
-        leaderboard_text_money_arr = []
+            for index,team in enumerate(sorted_teams_points):
+                if index < 10:
+                    leaderboard_text_points_arr.append(f"`{index+1})` {team.capitalize()} -> {sorted_teams_points[team][0]} Points  ( Wins: {sorted_teams_points[team][1]} - Losses: {sorted_teams_points[team][2]} )")
+                else: break
+                
+            leaderboard_text_points = "\n".join(leaderboard_text_points_arr)
 
-        for index, team in enumerate(sorted_teams_money):
-            if index < 10:
-                leaderboard_text_money_arr.append(f"`{index+1})` {team.capitalize()} -> ${sorted_teams_money[team]}")
-            else: break
+            embed.add_field(name = "Top 10 Teams (Points) ", value = leaderboard_text_points, inline=False)
 
-        leaderboard_text_money = "\n".join(leaderboard_text_money_arr)
+        elif _type.upper() in ["MONEY", ""]:
+            team_money = {}
 
-        embed.add_field(name = "Top 10 Teams (Money Earned) ", value = leaderboard_text_money, inline=False)
+            for team in teams:
+                team_money[team] = teams[team]["money_earned"]
+
+            sorted_teams_money = dict(sorted(team_money.items(), key=lambda item: item[1], reverse=True))
+
+            leaderboard_text_money_arr = []
+
+            for index, team in enumerate(sorted_teams_money):
+                if index < 10:
+                    leaderboard_text_money_arr.append(f"`{index+1})` {team.capitalize()} -> ${sorted_teams_money[team]}")
+                else: break
+
+            leaderboard_text_money = "\n".join(leaderboard_text_money_arr)
+
+            embed.add_field(name = "Top 10 Teams (Money Earned) ", value = leaderboard_text_money, inline=False)
         
+        else:
+            await ctx.message.channel.send(f"{_type} is not a leaderboard type. Use !help if you need assistance! [<@{ctx.message.author.id}>]")
+            return
 
         await ctx.message.channel.send(embed=embed)
     
