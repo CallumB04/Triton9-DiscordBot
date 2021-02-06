@@ -345,7 +345,7 @@ async def player(ctx, choice="", playername=""):
         return
 
 @bot.command()
-async def tb(ctx, choice="", teamname="", enemyteam=""):
+async def tb(ctx, choice="", teamname="", enemyteam="", wagered=0):
 
     ## -- !tb <choice> --
     ## view -> allows user to view players stats and infomation
@@ -372,7 +372,7 @@ async def tb(ctx, choice="", teamname="", enemyteam=""):
                         if len(teams[teamname]["players"]) == 4 and len(teams[enemyteam]["players"]) == 4:
                             if teams[teamname]["owner"] == ctx.message.author.id:
                                 enemy_owner = teams[enemyteam]["owner"]
-                                await ctx.message.channel.send(f"<@{enemy_owner}>, your team '{enemyteam}' has been challenged. You have 60 seconds to accept? `!accept or !decline`")
+                                await ctx.message.channel.send(f"<@{enemy_owner}>, your team '{enemyteam}' has been challenged. You have 60 seconds to accept. `!accept or !decline`")
 
                                 def check(m):
                                     return m.content.upper() in ["!ACCEPT", "!DECLINE"] and m.author.id == enemy_owner
@@ -551,7 +551,200 @@ async def tb(ctx, choice="", teamname="", enemyteam=""):
                 json.dump(teams, f)
 
         elif choice.upper() == "WAGER":
-            return
+
+            if wagered == 0:
+                await ctx.message.channel.send(f"You need to wager atleast $1 to challenge someone. If you cant, use '!tb challenge' instead! [<@{ctx.message.author.id}>]")
+                return
+
+            with open("./data/teams.json", "r") as f:
+                teams = json.load(f)
+
+                if teamname in teams:
+                    if enemyteam in teams:
+                        if len(teams[teamname]["players"]) == 4 and len(teams[enemyteam]["players"]) == 4:
+                            if teams[teamname]["owner"] == ctx.message.author.id:
+                                enemy_owner = teams[enemyteam]["owner"]
+                                await ctx.message.channel.send(f"<@{enemy_owner}>, your team '{enemyteam}' has been challenged to a wager ( ${wagered} ). You have 60 seconds to accept `!accept or !decline`")
+
+                                def check(m):
+                                    return m.content.upper() in ["!ACCEPT", "!DECLINE"] and m.author.id == enemy_owner
+
+                                try:
+                                    msg = await bot.wait_for("message", timeout=60.0, check=check)
+                                except asyncio.TimeoutError:
+                                    await ctx.message.channel.send(f"The game was not accepted in time. Challenge them again or try another team! [<@{ctx.message.author.id}>]")
+                                    return
+                                else:
+                                    if msg.content.upper() == "!ACCEPT":
+                                        embed = discord.Embed(title = "Wager accepted, please report scores and contact Xenorakk#8126 about sending money within the next 90 minutes!", color = discord.Colour.blurple())
+                                        
+                                        ## Team 1
+                                        team1_players_id = teams[teamname]["players"]
+                                        team1_players = [await bot.fetch_user(playerid) for playerid in team1_players_id]
+                                        team1_players_names = [player.name for player in team1_players]
+                                        team1_players_str = ", ".join(team1_players_names)
+                                        team1_wins = teams[teamname]["wins"]
+                                        team1_losses = teams[teamname]["losses"]
+                                        team1_ratio = f"{team1_wins} - {team1_losses}"
+                                        team1_text = str(team1_players_str + "; `" + team1_ratio + "`")
+
+                                        embed.add_field(name = f"Team 1: {teamname.capitalize()}", value = team1_text, inline=False)
+
+                                        ## Team 2
+                                        team2_players_id = teams[enemyteam]["players"]
+                                        team2_players = [await bot.fetch_user(playerid) for playerid in team2_players_id]
+                                        team2_players_names = [player.name for player in team2_players]
+                                        team2_players_str = ", ".join(team2_players_names)
+                                        team2_wins = teams[enemyteam]["wins"]
+                                        team2_losses = teams[enemyteam]["losses"]
+                                        team2_ratio = f"{team2_wins} - {team2_losses}"
+                                        team2_text = str(team2_players_str + "; `" + team2_ratio + "`")
+
+                                        embed.add_field(name = f"Team 2: {enemyteam.capitalize()}", value = team2_text, inline=False)
+
+                                        
+                                        firsthost = random.choice([teamname, enemyteam]) ## coin flip to show first host
+                                        random_gm = random.choice(["Hardpoint", "Search and Destroy"]) ## randomising gamemode
+
+                                        embed.add_field(name = "Game rules", value = f"`First host - {firsthost.capitalize()}`\n`Gamemode - {random_gm}`\n`Wager Amount - ${wagered}`", inline=False)
+
+                                        embed.set_footer(text = f"The owner of {teamname}: {ctx.message.author.name}, needs to input outcome. '!game win' or '!game loss' in this current channel.")
+                                        await ctx.message.channel.send(embed=embed)
+
+
+                                        def win_check(m):
+                                            return m.content.upper() in ["!GAME WIN", "!GAME LOSS"] and m.author.id == ctx.message.author.id
+
+                                        try:
+                                            result = await bot.wait_for("message", timeout=4800.0, check=win_check)
+                                        except asyncio.TimeoutError:
+                                            await ctx.message.channel.send(f"Score for game between '{teamname}' and '{enemyteam}' has not been reported. Game Aborted! Message <@197575139259449345> to retrieve your money! [<@{ctx.message.author.id}>]")
+                                        else:
+
+                                            ## Embed for displaying game results
+                                            embed = discord.Embed(title = f"Results of {teamname.capitalize()} .vs. {enemyteam.capitalize()}", color = discord.Colour.blurple())
+                                            
+                                            ## Team 1
+                                            team1_players_id = teams[teamname]["players"]
+                                            team1_players = [await bot.fetch_user(playerid) for playerid in team1_players_id]
+                                            team1_players_names = [player.name for player in team1_players]
+                                            team1_players_str = ", ".join(team1_players_names)
+                                            
+
+
+                                            ## Team 2
+                                            team2_players_id = teams[enemyteam]["players"]
+                                            team2_players = [await bot.fetch_user(playerid) for playerid in team2_players_id]
+                                            team2_players_names = [player.name for player in team2_players]
+                                            team2_players_str = ", ".join(team2_players_names)
+                                            
+
+
+                                            if result.content.upper() == "!GAME WIN":
+                                                teams[teamname]["games"] += 1
+                                                teams[teamname]["wins"] += 1
+                                                teams[teamname]["points"] += 100
+                                                teams[teamname]["money_earned"] += wagered
+
+                                                teams[enemyteam]["games"] += 1
+                                                teams[enemyteam]["losses"] += 1
+                                                teams[enemyteam]["points"] -= 45
+                                                teams[enemyteam]["money_earned"] -= wagered
+                                                if teams[enemyteam]["points"] < 0: teams[enemyteam]["points"] = 0
+
+                                                with open("./data/players.json", "r") as f2:
+                                                    players = json.load(f2)
+
+                                                    for playerid in teams[teamname]["players"]:
+                                                        players[str(playerid)]["games"] += 1
+                                                        players[str(playerid)]["wins"] += 1
+
+                                                    for playerid in teams[enemyteam]["players"]:
+                                                        players[str(playerid)]["games"] += 1
+                                                        players[str(playerid)]["losses"] += 1
+
+                                                with open("./data/players.json", "w") as f2:
+                                                    json.dump(players, f2)
+
+                                                team1_wins = teams[teamname]["wins"]
+                                                team1_losses = teams[teamname]["losses"]
+                                                team1_ratio = f"{team1_wins} - {team1_losses}"
+                                                team1_text = str(team1_players_str + "; " + team1_ratio)
+
+                                                team2_wins = teams[enemyteam]["wins"]
+                                                team2_losses = teams[enemyteam]["losses"]
+                                                team2_ratio = f"{team2_wins} - {team2_losses}"
+                                                team2_text = str(team2_players_str + "; " + team2_ratio)
+
+                                                embed.add_field(name = f"WINNERS: {teamname.capitalize()}", value = team1_text, inline=False)
+                                                embed.add_field(name = f"LOSERS: {enemyteam.capitalize()}", value = team2_text, inline=False)
+
+                                            elif result.content.upper() == "!GAME LOSS":
+                                                teams[enemyteam]["games"] += 1
+                                                teams[enemyteam]["wins"] += 1
+                                                teams[enemyteam]["points"] += 100
+                                                teams[enemyteam]["money_earned"] += wagered
+
+                                                teams[teamname]["games"] += 1
+                                                teams[teamname]["losses"] += 1
+                                                teams[teamname]["points"] -= 45
+                                                teams[teamname]["money_earned"] -= wagered
+
+                                                if teams[teamname]["points"] < 0: teams[teamname]["points"] = 0
+
+                                                with open("./data/players.json", "r") as f2:
+                                                    players = json.load(f2)
+
+                                                    for playerid in teams[enemyteam]["players"]:
+                                                        players[str(playerid)]["games"] += 1
+                                                        players[str(playerid)]["wins"] += 1
+
+                                                    for playerid in teams[teamname]["players"]:
+                                                        players[str(playerid)]["games"] += 1
+                                                        players[str(playerid)]["losses"] += 1
+
+                                                with open("./data/players.json", "w") as f2:
+                                                    json.dump(players, f2)
+
+                                                team1_wins = teams[teamname]["wins"]
+                                                team1_losses = teams[teamname]["losses"]
+                                                team1_ratio = f"`{team1_wins} - {team1_losses}`"
+                                                team1_text = str(team1_players_str + "; " + team1_ratio)
+
+                                                team2_wins = teams[enemyteam]["wins"]
+                                                team2_losses = teams[enemyteam]["losses"]
+                                                team2_ratio = f"`{team2_wins} - {team2_losses}`"
+                                                team2_text = str(team2_players_str + "; " + team2_ratio)
+
+                                                embed.add_field(name = f"LOSERS: {teamname.capitalize()}", value = team1_text, inline=False)
+                                                embed.add_field(name = f"WINNERS: {enemyteam.capitalize()}", value = team2_text, inline=False)
+
+                                            embed.set_footer(text = "Message Xenorakk#8126 to receive your winnings!")
+                                            await ctx.message.channel.send(embed=embed)
+
+                                    elif msg.content.upper() == "!DECLINE":
+                                        await ctx.message.channel.send(f"Wager declined! [<@{enemy_owner}>]")
+                                        return
+
+                            else:
+                                await ctx.message.channel.send(f"You are not the owner of team '{teamname}'! [<@{ctx.message.author.id}>]")
+                                return
+                        else:
+                            if len(teams[teamname]["players"]) < 4:
+                                await ctx.message.channel.send(f"Team {teamname.capitalize()} does not have enough players to compete! [<@{ctx.message.author.id}>]")
+                                return
+                            elif len(teams[enemyteam]["players"]) < 4:
+                                await ctx.message.channel.send(f"Team {enemyteam.capitalize()} does not have enough players to compete! [<@{ctx.message.author.id}>]")
+                                return
+                    else:
+                        await ctx.message.channel.send(f"Team '{enemyteam}' doesnt exist. You cant challenge this team! [<@{ctx.message.author.id}>]")
+                        return
+                else:
+                    await ctx.message.channel.send(f"Team '{teamname}' doesnt exist. Create a team to start a game battle! [<@{ctx.message.author.id}>]")
+                    return
+
+            with open("./data/teams.json", "w") as f:
+                json.dump(teams, f)
     
     else:
         await ctx.message.channel.send(f"That command doesnt exist. Use '!help' commands if you need! [<@{ctx.message.author.id}>]")
@@ -565,24 +758,47 @@ async def leaderboard(ctx):
         team_points = {}
 
         ## team stored as array [points, wins, losses] ------ team_points[team][0] = points of team
-        for index, team in enumerate(teams):
+        for team in teams:
+            team_points[team] = []
+            team_points[team].append(teams[team]["points"])
+            team_points[team].append(teams[team]["wins"])
+            team_points[team].append(teams[team]["losses"])
+            
+
+        sorted_teams_points = dict(sorted(team_points.items(), key=lambda item: item[1][0], reverse=True))
+
+        leaderboard_text_points_arr = []
+
+        for index,team in enumerate(sorted_teams_points):
             if index < 10:
-                team_points[team] = []
-                team_points[team].append(teams[team]["points"])
-                team_points[team].append(teams[team]["wins"])
-                team_points[team].append(teams[team]["losses"])
+                leaderboard_text_points_arr.append(f"`{index+1})` {team.capitalize()} -> {sorted_teams_points[team][0]} Points  ( Wins: {sorted_teams_points[team][1]} - Losses: {sorted_teams_points[team][2]} )")
             else: break
-
-        sorted_teams = dict(sorted(team_points.items(), key=lambda item: item[1][0], reverse=True))
-
-        leaderboard_text_arr = [f"`{index+1})` {team.capitalize()} -> {sorted_teams[team][0]} Points  ( Wins: {sorted_teams[team][1]} - Losses: {sorted_teams[team][2]} )" for index, team in enumerate(sorted_teams)]
-        leaderboard_text = "\n".join(leaderboard_text_arr)
+            
+        leaderboard_text_points = "\n".join(leaderboard_text_points_arr)
 
         embed = discord.Embed(title = "Leaderboards", color = discord.Colour.purple())
-        embed.add_field(name = "Top 10 Teams ", value = leaderboard_text, inline=False)
+        embed.add_field(name = "Top 10 Teams (Points) ", value = leaderboard_text_points, inline=False)
+
+
+        team_money = {}
+
+        for team in teams:
+            team_money[team] = teams[team]["money_earned"]
+
+        sorted_teams_money = dict(sorted(team_money.items(), key=lambda item: item[1], reverse=True))
+
+        leaderboard_text_money_arr = []
+
+        for index, team in enumerate(sorted_teams_money):
+            if index < 10:
+                leaderboard_text_money_arr.append(f"`{index+1})` {team.capitalize()} -> ${sorted_teams_money[team]}")
+            else: break
+
+        leaderboard_text_money = "\n".join(leaderboard_text_money_arr)
+
+        embed.add_field(name = "Top 10 Teams (Money Earned) ", value = leaderboard_text_money, inline=False)
+        
 
         await ctx.message.channel.send(embed=embed)
     
-        
-
 bot.run(TOKEN)
